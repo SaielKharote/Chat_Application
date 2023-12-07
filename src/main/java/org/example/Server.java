@@ -1,29 +1,34 @@
 package org.example;
 
 import javax.swing.*;
-import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
-public class Server extends JFrame implements ActionListener {
+public class Server implements ActionListener {
     JTextField text;
     JPanel newPanel;
-    Box vertical = Box.createVerticalBox();
+    static Box vertical = Box.createVerticalBox();
+    static JFrame f = new JFrame();
+    static DataOutputStream dout;
 
     Server() {
-        setLayout(null);
+        f.setLayout(null);
 
         JPanel p1 = new JPanel();
         p1.setBackground(new Color(7, 94, 84));
         p1.setBounds(0, 0, 450, 70);
         p1.setLayout(null);
-        add(p1);
+        f.add(p1);
 
         ImageIcon i1 = new ImageIcon(ClassLoader.getSystemResource("icons/3.png"));
         Image i2 = i1.getImage().getScaledInstance(25, 25, Image.SCALE_DEFAULT);
@@ -81,12 +86,12 @@ public class Server extends JFrame implements ActionListener {
 
         newPanel = new JPanel();
         newPanel.setBounds(5, 75, 440, 570);
-        add(newPanel);
+        f.add(newPanel);
 
         text = new JTextField();
         text.setBounds(5, 655, 310, 40);
         text.setFont(new Font("SAN_SERIF", Font.PLAIN, 16));
-        add(text);
+        f.add(text);
 
         JButton send = new JButton("Send");
         send.setBounds(320, 655, 123, 40);
@@ -94,37 +99,66 @@ public class Server extends JFrame implements ActionListener {
         send.setForeground(Color.WHITE);
         send.addActionListener(this);
         send.setFont(new Font("SAN_SERIF", Font.PLAIN, 15));
-        add(send);
+        f.add(send);
 
 
-        setUndecorated(true);
-        setSize(450, 700);
-        setLocation(200, 50);
-        getContentPane().setBackground(Color.WHITE);
+        f.setUndecorated(true);
+        f.setSize(450, 700);
+        f.setLocation(200, 50);
+        f.getContentPane().setBackground(Color.WHITE);
 
-        setVisible(true);
+        f.setVisible(true);
     }
 
     public static void main(String[] args) {
         new Server();
+
+        try{
+            ServerSocket skt = new ServerSocket(6001);
+            while (true) {
+                Socket s = skt.accept();
+                DataInputStream din = new DataInputStream(s.getInputStream());
+                dout = new DataOutputStream(s.getOutputStream());
+
+                while (true) {
+                    String msg = din.readUTF();
+                    JPanel panel = formatLabel(msg);
+
+                    JPanel left = new JPanel(new BorderLayout());
+                    left.add(panel, BorderLayout.LINE_START);
+                    vertical.add(left);
+                    f.validate();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void actionPerformed(ActionEvent actionEvent) {
-        String out = text.getText();
+        try {
+            String out = text.getText();
 
-        JPanel p2 = formatLabel(out);
-        newPanel.setLayout(new BorderLayout());
-        JPanel right = new JPanel(new BorderLayout());
-        right.add(p2, BorderLayout.LINE_END);
-        vertical.add(right);
-        vertical.add(Box.createVerticalStrut(15));
-        newPanel.add(vertical, BorderLayout.PAGE_START);
+            JPanel p2 = formatLabel(out);
 
-        text.setText("");
-        repaint();
-        revalidate();
-        validate();
+            newPanel.setLayout(new BorderLayout());
+            JPanel right = new JPanel(new BorderLayout());
+            right.add(p2, BorderLayout.LINE_END);
+            vertical.add(right);
+            vertical.add(Box.createVerticalStrut(15));
+            newPanel.add(vertical, BorderLayout.PAGE_START);
+
+            dout.writeUTF(out);
+
+            text.setText("");
+
+            f.repaint();
+            f.validate();
+            f.invalidate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static JPanel formatLabel(String out) {
